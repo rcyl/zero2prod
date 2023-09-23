@@ -24,3 +24,13 @@ App::new()
 # To check for unused dependencies
 cargo install cargo-udeps
 cargo +nightly udeps
+
+# Generate query metadata to support offline compile-time verification
+sqlx-prepare 
+cargo sqlx prepare -- --lib
+// This generates sqlx-data.json which needs to be checked in 
+
+# cargo chef
+As long as dependencies do not change, the recipe.json file will stay
+the same and therefore the output of cargo chef cook --release --recipe-path
+recipe.json will be cached and massively speeding up the builds

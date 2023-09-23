@@ -1,5 +1,9 @@
 use secrecy::{ExposeSecret, Secret};
+use sqlx::ConnectOptions;
 use std::convert::{TryFrom, TryInto};
+use serde_aux::field_attributes::deserialize_number_from_string;
+use sqlx::postgres::PgConnectOptions;
+use sqlx::postgres::PgSslMode;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
@@ -9,6 +13,7 @@ pub struct Settings {
 
 #[derive(serde::Deserialize)]
 pub struct ApplicationSettings {
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
 }
@@ -17,18 +22,16 @@ pub struct ApplicationSettings {
 pub struct DatabaseSettings {
     pub username: String,
     pub password: Secret<String>,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
     pub database_name: String,
+    pub require_ssl: bool,
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    let mut settings = config::Config::default();
     let base_path = std::env::current_dir().expect("Failed to determine current directory");
     let configuration_directory = base_path.join("configuration");
-
-    // Read the "default" configuration file
-    settings.merge(config::File::from(configuration_directory.join("base")).required(true))?;
 
     // Detect the running environment.
     // Default to 'local' if unspecified
@@ -36,13 +39,23 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
         .unwrap_or_else(|_| "local".into())
         .try_into()
         .expect("Failed to parrse APP_ENVIRONMENT.");
+    
+    let environment_filename = format!("{}.yaml", environment.as_str());
+    let settings = config::Config::builder()
+        .add_source(config::File::from(configuration_directory.join("base.yaml")))
+        .add_source(
+            config::File::from(configuration_directory.join(environment_filename))
+        )
+        // Add in settings from env variables (with a prefix of APP and '__' as separator)
+        // E.g. APP_APPLICATON__PORT=5001 would set 'Settings.application.port
+        .add_source(
+            config::Environment::with_prefix("APP")
+                .prefix_separator("_")
+                .separator("__")
+        )
+        .build()?;
 
-    // Layer on environment specific values.
-    settings.merge(
-        config::File::from(configuration_directory.join(environment.as_str())).required(true),
-    )?;
-
-    settings.try_into()
+    settings.try_deserialize::<Settings>()
 }
 
 /// The possible runtime environemtn for our application
@@ -75,25 +88,22 @@ impl TryFrom<String> for Environment {
 }
 
 impl DatabaseSettings {
-    pub fn connection_string(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port,
-            self.database_name
-        ))
+    pub fn without_db(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require
+        } else {
+            // Try an encrypted connection, fallback to unencrypted if it fails
+            PgSslMode::Prefer
+        };
+        PgConnectOptions::new()
+            .host(&self.host)
+            .username(&self.username)
+            .password(&self.password.expose_secret())
+            .port(self.port)
+            .ssl_mode(ssl_mode)
     }
 
-    // This allows for connection to the Postgres instance, not a specific logical database
-    pub fn connection_string_without_db(&self) -> Secret<String> {
-        Secret::new(format!(
-            "postgres://{}:{}@{}:{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port
-        ))
+    pub fn with_db(&self) -> PgConnectOptions {
+        self.without_db().database(&self.database_name)
     }
 }
