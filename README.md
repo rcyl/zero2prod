@@ -52,3 +52,18 @@ Used to generate fake emails (among others)
 ## quickcheck
 Alternative to proptest. Defines Arbitrary trait, that needs a source of
 randomness and returns an instance of the type. Default number of loops is 100
+
+## Generate random string
+```
+fn generate_subscription_token() -> String {
+    let mut rng = thread_rng();
+    std::iter::repeat_with(|| rng.sample(Alphanumeric))
+        .map(char::from)
+        .take(25)
+        .collect()
+}
+```
+## Mapping result to Option
+```
+result.map(|r| r.some_field)
+```

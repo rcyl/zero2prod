@@ -10,7 +10,7 @@ impl SubscriberName {
         // trim() returns a view out input without trailing whitespace
         // is_empty() checks if the view contains any characters
         let is_empty_or_whitespace = s.trim().is_empty();
-        
+
         // A grapheme is defined by the Unicode standard as a "user-perceived"
         // character: `å` is a single grapheme, but it is composed of two characters
         // (`a` and `̊`).
@@ -28,7 +28,6 @@ impl SubscriberName {
             Ok(Self(s))
         }
     }
-    
 }
 
 impl AsRef<str> for SubscriberName {
@@ -53,7 +52,7 @@ mod tests {
         let name = "a".repeat(257);
         assert_err!(SubscriberName::parse(name));
     }
-    
+
     #[test]
     fn whitespace_only_names_are_rejected() {
         let name = " ".to_string();
@@ -79,5 +78,4 @@ mod tests {
         let name = "Ursula Le Guin".to_string();
         assert_ok!(SubscriberName::parse(name));
     }
-
 }
