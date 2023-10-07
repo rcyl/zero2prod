@@ -62,7 +62,7 @@ pub async fn get_subscriber_id_from_token(
 )  -> Result<Option<Uuid>, sqlx::Error> {
 
     let result = sqlx::query!(
-        "SELECT subscriber_id FROM subscriptions_tokens \
+        "SELECT subscriber_id FROM subscription_tokens \
         WHERE subscription_token = $1",
         subscription_token,
     )

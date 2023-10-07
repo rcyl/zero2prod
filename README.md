@@ -41,7 +41,23 @@ recipe.json will be cached and massively speeding up the builds
 
 ## claims crate
 Consider using this crate for more verbose assertions for asserting
-error or option types
+error or option types. For example:
+```
+#[test]
+fn dummy_fail() {
+let result: Result<&str, &str> = Err("The app crashed due to an IO error");
+claims::assert_ok!(result);
+}
+-- dummy_fail stdout ----
+thread 'dummy_fail' panicked at 'assertion failed, expected Ok(..),
+got Err("The app crashed due to an IO error")
+```
+versus
+```
+assert!(result);
+--- dummy_fail stdout ----
+thread 'dummy_fail' panicked at 'assertion failed: result.is_ok()'
+```
 
 ## validator crate
 Used to check email format (among other stuff)
