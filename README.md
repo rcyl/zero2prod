@@ -83,3 +83,43 @@ fn generate_subscription_token() -> String {
 ```
 result.map(|r| r.some_field)
 ```
+
+## For anyhow::error, use with_context to avoid paying for the error_path if the fallible oprations succeds
+```
+.context("Oh no!) // No difference between context and with_context
+
+.with_context(|| { 
+    // Allocating memory here, so just want to do that on failed operation
+    format!("Failed to send: {}", subscriber_email); 
+})
+```
+
+## sqlx::query_as
+sqlx::query_as maps the retrieved rows to the typespecified as its first argument
+
+## Splitn into 2 segments using ':' as delimeter
+```
+let mut credentials = decoded_credentials.splitn(2, ':');
+```
+## PHC String Format
+The PHC string format provides a standard representation for a password hash: it includes the hash itself, the salt, the algorithm and all its associated
+parameters. Using the PHC format, an Argon2id password hash looks like this:
+```
+# ${algorithm}${algorithm version}${,-separated algorithm parameters}${hash}${salt}
+$argon2id$v=19$m=65536,t=2,p=1$
+gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno
+```
+## Blocking the async executor
+Async functions should return in less than 10-100 microseconds. Be on the lookout
+for workloads that take longer than 1ms (password hashing is a perfect example)
+
+## Double ??
+One ? for spawn_blocking error, the other ? for some task 
+```
+tokio::task::spawn_blocking(move || {
+        // some task
+})
+.await
+.context("Failed to spawn blocking task.")
+.map_err(PublishError::UnexpectedError)??
+```
