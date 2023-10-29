@@ -3,3 +3,6 @@ mod helpers;
 mod newsletter;
 mod subscriptions;
 mod subscriptions_confirm;
+mod login;
+mod admin_dashboard;
+mod change_password;
